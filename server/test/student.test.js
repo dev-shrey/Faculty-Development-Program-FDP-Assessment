@@ -22,6 +22,7 @@ test('student schema requires the core fields and timestamps', async () => {
     assert.ok(error.errors.name)
     assert.ok(error.errors.email)
     assert.ok(error.errors.course)
+    assert.ok(error.errors.status)
     return true
   })
   assert.equal(Student.schema.options.timestamps, true)
@@ -37,6 +38,12 @@ test('student schema restricts placement status and declares unique normalized e
   await assert.rejects(student.validate(), (error) => Boolean(error.errors.status))
   assert.equal(student.email, 'aditi@example.edu')
   assert.equal(Student.schema.path('email').options.unique, true)
+  await assert.rejects(new Student({
+    name: 'Aditi Sharma',
+    email: 'invalid-email',
+    course: 'B.Tech CSE',
+    status: 'Applied',
+  }).validate(), (error) => Boolean(error.errors.email))
 })
 
 test('duplicate email database errors map to HTTP 409', () => {
@@ -46,10 +53,40 @@ test('duplicate email database errors map to HTTP 409', () => {
   })
 })
 
-test('challenge 3: list query validates and applies search, status, and pagination', { todo: 'Candidate implementation' }, () => {
+test('student validation and cast errors return client-safe responses', async () => {
+  const invalidStudent = new Student({})
+  await assert.rejects(invalidStudent.validate(), (error) => {
+    assert.deepEqual(getStudentWriteError(error, mongoose), {
+      status: 400,
+      message: 'Please provide valid values for: name, email, course, status',
+    })
+    return true
+  })
+  assert.deepEqual(getStudentWriteError(
+    new mongoose.Error.CastError('ObjectId', 'invalid', '_id'),
+    mongoose
+  ), {
+    status: 400,
+    message: 'One or more student values are invalid',
+  })
+})
+
+test('list query applies search, status, and pagination', () => {
   assert.deepEqual(buildStudentQuery({ q: 'aditi', status: 'Applied', page: '2', pageSize: '5' }), {
     filter: { status: 'Applied', search: 'aditi' },
     page: 2,
     pageSize: 5,
   })
+  assert.deepEqual(buildStudentQuery({ search: 'aditi', limit: '5' }), {
+    filter: { search: 'aditi' },
+    page: 1,
+    pageSize: 5,
+  })
+})
+
+test('list query rejects invalid status and pagination values', () => {
+  assert.throws(() => buildStudentQuery({ status: 'Pending' }), /valid placement status/i)
+  assert.throws(() => buildStudentQuery({ page: '0' }), /between 1/i)
+  assert.throws(() => buildStudentQuery({ limit: '101' }), /between 1 and 100/i)
+  assert.throws(() => buildStudentQuery({ page: ['1'] }), /single value/i)
 })

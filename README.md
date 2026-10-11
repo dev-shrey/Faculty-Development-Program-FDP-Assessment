@@ -226,6 +226,14 @@ This endpoint confirms that the API is responding. Check backend logs for `Mongo
 curl -i http://localhost:5000/api/students
 ```
 
+`GET /api/students` accepts `q` (or `search`) for a case-insensitive name/email search, `status` for a placement status, `page` for the page number, and `pageSize` (or `limit`) for the page size. The page size defaults to 10 and is limited to 100 records. Search and status may be combined:
+
+```text
+http://localhost:5000/api/students?q=aditi&status=Applied&page=1&limit=5
+```
+
+The response contains `data` records and `pagination` metadata (`page`, `pageSize`, `total`, and `pages`). Invalid query values return HTTP `400` with a JSON error message.
+
 ### Troubleshooting
 
 - MongoDB service is not running: start it with the OS-specific service command in Section 7, then retry the connection check.

@@ -1,5 +1,7 @@
 import mongoose from "mongoose";
 
+const emailPattern = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+
 const studentSchema = new mongoose.Schema(
   {
     name: {
@@ -13,6 +15,7 @@ const studentSchema = new mongoose.Schema(
       unique: true,
       lowercase: true,
       trim: true,
+      match: [emailPattern, "Email address must be valid"],
     },
     course: {
       type: String,
@@ -22,7 +25,6 @@ const studentSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: ["Applied", "Interview", "Offered", "Placed"],
-      default: "Applied",
       required: true,
     },
   },
